@@ -7,7 +7,7 @@ modId="compukters_cosmonautics"
 version="${addon_version}"
 displayName="Compukters: Cosmonautics"
 authors="lazyhat"
-description="Empty integration scaffold for future Compukters and Create: Cosmonautics support."
+description="Read-only flight and orbital telemetry for Compukters and Create: Cosmonautics."
 
 [[dependencies.compukters_cosmonautics]]
 modId="neoforge"

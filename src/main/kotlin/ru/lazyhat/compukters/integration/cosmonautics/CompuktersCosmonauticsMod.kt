@@ -22,6 +22,10 @@ import net.neoforged.fml.common.Mod
 
 @Mod(CompuktersCosmonauticsMod.MOD_ID)
 class CompuktersCosmonauticsMod {
+    init {
+        CosmonauticsGuestIntegration.register()
+    }
+
     companion object {
         const val MOD_ID = "compukters_cosmonautics"
     }

@@ -27,6 +27,7 @@ plugins {
     id("dev.architectury.loom")
     id("architectury-plugin")
     id("org.jmailen.kotlinter")
+    id("ru.lazyhat.compukters.addon")
 }
 
 group = "ru.lazyhat.compukters"
@@ -66,13 +67,8 @@ val sableCompanion = files(configurations.named("sableCompanion"))
 val sableLibraries = files(configurations.named("sableNestedMods"))
 val veilLibraries = files(configurations.named("sableRuntimeLibraries"))
 
-// Resolve the selected SDK without producing a Guest bundle before a real Guest API exists.
-repositories {
-    exclusiveContent {
-        forRepository { maven { url = uri(File(gradle.extra["compuktersSdkDirectory"].toString()).resolve("repository")) } }
-        filter { includeGroup("ru.lazyhat.compukters") }
-    }
-}
+apply(from = "gradle/workspace-sdk.gradle.kts")
+compuktersAddon { register("cosmonautics") }
 
 val developmentMod = if (providers.gradleProperty("compuktersDependencyMode").get() == "workspace") {
     files(rootProject.file(providers.gradleProperty("compuktersWorkspace").get()).resolve(
@@ -102,6 +98,7 @@ dependencies {
     modRuntimeOnly("maven.modrinth:create-aeronautics:44pLdPGg") { isTransitive = false }
     modRuntimeOnly(aeronauticsLibraries)
     forgeRuntimeLibrary(veilLibraries)
+    testImplementation(kotlin("test"))
     compileOnly("ru.lazyhat.compukters:compukters-addon-api:$addonSdkVersion")
     compileOnly("ru.lazyhat.compukters:compukters-addon-neoforge-1.21.1:$addonSdkVersion")
     runtimeOnly(developmentMod)
@@ -147,6 +144,8 @@ val verifyProductionJar = tasks.register("verifyProductionJar") {
             listOf(
                 "META-INF/neoforge.mods.toml",
                 "ru/lazyhat/compukters/integration/cosmonautics/CompuktersCosmonauticsMod.class",
+                "META-INF/compukters/addons/cosmonautics.cagb",
+                "cosmonautics/CosmonauticsAddonContract.class",
             ).forEach { required ->
                 check(entries.count { it == required } == 1) { "$required is missing or duplicated in ${archive.name}" }
             }
@@ -154,7 +153,7 @@ val verifyProductionJar = tasks.register("verifyProductionJar") {
                 "dev/devce/", "dev/egg/", "dev/ryanhcode/", "com/simibubi/create/",
                 "ru/lazyhat/compukters/api/", "ru/lazyhat/compukters/core/", "ru/lazyhat/compukters/impl/",
                 "ru/lazyhat/compukters/integration/create/", "ru/lazyhat/compukters/integration/sable/",
-                "ru/lazyhat/compukters/integration/propulsion/", "META-INF/compukters/addons/",
+                "ru/lazyhat/compukters/integration/propulsion/",
             ).forEach { forbidden ->
                 check(entries.none { it.startsWith(forbidden) }) { "$forbidden implementation leaked into ${archive.name}" }
             }
@@ -170,3 +169,5 @@ tasks.register("buildProductionJar") {
     group = "build"
     dependsOn(productionJar, verifyProductionJar)
 }
+
+tasks.test { useJUnitPlatform() }

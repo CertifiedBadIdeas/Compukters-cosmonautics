@@ -3,8 +3,8 @@
 Independent Minecraft 1.21.1 / NeoForge addon scaffold for [Compukters](https://github.com/CertifiedBadIdeas/Compukters)
 and [Create: Cosmonautics](https://modrinth.com/mod/create-cosmonatics/version/HuCMavv8).
 
-The mod currently has an empty NeoForge entry point. It provides no Guest API, peripherals, spacecraft controls,
-commands or mixins. There is no Guest bundle or ABI lock until the first real Guest API is introduced.
+The addon exposes request-only space telemetry through Guest Kotlin `cosmonautics.space.Space`.
+It does not yet control Cosmonautics engines or provide a launch autopilot.
 
 ## Development
 
@@ -33,6 +33,37 @@ For a checkout outside the workspace, select `-PcompuktersDependencyMode=release
 Addon version `1.0` follows the first-party `x.y` policy. The archive name includes the selected Compukters line and
 metadata bounds compatibility to that line. Upstream mods and Compukters implementations remain external dependencies.
 
-When adding real Guest operations, apply `ru.lazyhat.compukters.addon`, register `cosmonautics`, add Guest sources and
-an ABI lock, and use the SDK Host/Guest contracts. Until then, the SDK API dependencies are compile-only and the mod
-performs no registration beyond its NeoForge entry point. No tagged Guest-bundle release pipeline is configured yet.
+## Guest telemetry
+
+Declare `cosmonautics` in the project's addon list. `Space.status()` returns the request server `gameTick`,
+Minecraft dimension ID and `inDeepSpace`. Deep Space membership does not prove orbital insertion.
+
+`Space.planet()` returns the current linked planet frame name, radius in metres, transition altitude in metres,
+and upstream transfer permissions. On the surface it resolves the planet linked to the current dimension; in space
+it resolves the planet of the current instance's orbital frame. A non-planet frame or planet without a linked
+Minecraft dimension is unavailable. Radius and transition altitude are upstream values, not a measured local terrain height.
+
+`Space.orbit()` requires the computer to be on a loaded Sable construction inside an initialized Deep Space
+instance. It returns instance ID, request `gameTick`, instance-local `universeTick`, named central-body frame,
+position (m), velocity (m/s), gravitational parameter (m³/s²), signed semi-major axis (m), eccentricity and
+inclination (radians). These are **instance** position/velocity and current osculating elements, not an individual
+construction's Sable solver pose/velocity. A retained value snapshot does not change after upstream advances.
+The orbital clock can have a different timescale from the server tick. Separate telemetry requests are not atomic.
+
+`bound` identifies elliptic rather than hyperbolic motion. `periapsisRadius()` measures distance from the frame
+origin; subtract a matching planet's radius to estimate periapsis altitude. `apoapsisRadius()` rejects unbound
+motion and unrepresentable results. A bound orbit alone is not safe: compare its periapsis with the relevant
+planet/transition boundary. Planet shape and upstream atmosphere/transfer rules still matter.
+
+Missing, corrupt or uninitialized observations throw catchable `IllegalStateException`; no unavailable fields
+are represented by NaN, infinity or fabricated zero values. `status()` remains usable while the universe initializes.
+The adapter reads upstream state on the server thread without advancing physics, propagating orbits or installing subscriptions.
+
+Use Sable `Physics.snapshot()` for construction attitude and solver angular velocity. Euler angles and their derivatives
+are not substituted for physical angular velocity. The first telemetry API does not expose the rotation connecting
+orbital frame axes to Sable world axes; orbital guidance must not directly feed orbital velocity into world-space steering.
+It also makes no guarantee of uninterrupted program/engine ownership across dimension transfers.
+
+Focused checks: `updateCompuktersAddonAbiLock`, `check`, and `developmentModJar`. Pure observation tests cover finite
+elliptic/hyperbolic data and invalid numerical boundaries. Real surface/Deep Space observations require a world
+with the Cosmonautics dimensions; a vanilla GameTest world is insufficient.

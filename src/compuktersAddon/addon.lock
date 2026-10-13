@@ -1,0 +1,8 @@
+lock 2
+record cosmonautics.space.OrbitSnapshot cosmonautics.space.OrbitSnapshot{gameTick:I64,instanceId:I64,universeTick:I64,frame:STRING,position:kotlin.math.Vector3d{x:F64,y:F64,z:F64},velocity:kotlin.math.Vector3d{x:F64,y:F64,z:F64},gravitationalParameter:F64,semiMajorAxis:F64,eccentricity:F64,inclination:F64}
+record cosmonautics.space.PlanetSnapshot cosmonautics.space.PlanetSnapshot{gameTick:I64,frame:STRING,radius:F64,transitionHeight:F64,allowToSpace:BOOL,allowToDimension:BOOL}
+record cosmonautics.space.SpaceStatus cosmonautics.space.SpaceStatus{dimension:STRING,gameTick:I64,inDeepSpace:BOOL}
+record kotlin.math.Vector3d kotlin.math.Vector3d{x:F64,y:F64,z:F64}
+operation cosmonautics cosmonautics 1 0 active cosmonautics.space.SpaceBindings.orbit fun():OrbitSnapshot
+operation cosmonautics cosmonautics 1 1 active cosmonautics.space.SpaceBindings.planet fun():PlanetSnapshot
+operation cosmonautics cosmonautics 1 2 active cosmonautics.space.SpaceBindings.status fun():SpaceStatus
