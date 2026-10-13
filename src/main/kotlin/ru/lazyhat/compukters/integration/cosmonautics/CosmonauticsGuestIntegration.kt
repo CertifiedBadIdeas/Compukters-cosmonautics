@@ -20,6 +20,7 @@ package ru.lazyhat.compukters.integration.cosmonautics
 
 import cosmonautics.CosmonauticsAddonContract
 import cosmonautics.CosmonauticsCapabilityHandler
+import cosmonautics.GuidanceSnapshot
 import cosmonautics.OrbitSnapshot
 import cosmonautics.PlanetSnapshot
 import cosmonautics.SpaceStatus
@@ -55,7 +56,7 @@ private class CosmonauticsHost(
     override fun checkpoint(): ByteArray = byteArrayOf()
 
     private fun checkThread() {
-        check(computer.level.server.isSameThread) { "Flight telemetry must be copied on the server thread" }
+        check(computer.level.server.isSameThread) { "Space telemetry must be copied on the server thread" }
     }
 
     override fun status(): AddonCallResult<SpaceStatus> {
@@ -155,6 +156,34 @@ private class CosmonauticsHost(
                 orbit.a,
                 orbit.e,
                 orbit.i,
+            ),
+        )
+    }
+
+    override fun guidance(): AddonCallResult<GuidanceSnapshot> {
+        checkThread()
+        val data = manager() ?: return unavailable("Cosmonautics universe is not initialized")
+        val instance = instance(data) ?: return unavailable("Computer is not on a construction in an available Deep Space instance")
+        val location = instance.position
+        val pv = location.currentPVCoords
+        val p = pv.position
+        val v = pv.velocity
+        val directions =
+            GuidanceDirections.from(GuestVector(p.x, p.y, p.z), GuestVector(v.x, v.y, v.z))
+                ?: return unavailable("Orbital directions are invalid or the trajectory is nearly radial")
+        return addonCompleted(
+            GuidanceSnapshot(
+                computer.level
+                    .dimension()
+                    .location()
+                    .toString(),
+                computer.level.gameTime,
+                instance.id,
+                location.localUniverseTicks,
+                location.frame.name,
+                directions.prograde,
+                directions.radialOut,
+                directions.orbitNormal,
             ),
         )
     }

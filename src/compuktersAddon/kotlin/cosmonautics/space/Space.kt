@@ -65,6 +65,24 @@ public value class OrbitSnapshot(
     }
 }
 
+/**
+ * Directions from one Deep Space instance PV observation, expressed in Sable world axes.
+ * The pinned Cosmonautics physics adds world velocity components directly to the current
+ * orbital frame. These are directions, not world positions or construction solver velocities.
+ * radialOut points away from the central body; orbitNormal is radialOut cross prograde.
+ * The reference frame can change during propagation: do not retain directions across frame changes.
+ */
+public value class GuidanceSnapshot(
+    public val dimension: String,
+    public val gameTick: Long,
+    public val instanceId: Long,
+    public val universeTick: Long,
+    public val frame: String,
+    public val prograde: Vector3d,
+    public val radialOut: Vector3d,
+    public val orbitNormal: Vector3d,
+)
+
 public object Space {
     public fun status(): SpaceStatus = SpaceBindings.status()
 
@@ -73,10 +91,18 @@ public object Space {
 
     /** Throws IllegalStateException outside an available, initialized Deep Space instance. */
     public fun orbit(): OrbitSnapshot = SpaceBindings.orbit()
+
+    /**
+     * Throws IllegalStateException outside Deep Space or for invalid/degenerate directions.
+     * Rejects a nearly radial trajectory: sine of the position/velocity angle must exceed 1e-12.
+     * One request observes all directions; a separate Sable snapshot is not atomic with it.
+     */
+    public fun guidance(): GuidanceSnapshot = SpaceBindings.guidance()
 }
 
 private object SpaceBindings {
     external fun status(): SpaceStatus
     external fun planet(): PlanetSnapshot
     external fun orbit(): OrbitSnapshot
+    external fun guidance(): GuidanceSnapshot
 }

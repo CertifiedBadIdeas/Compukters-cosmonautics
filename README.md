@@ -1,6 +1,6 @@
 # Compukters: Cosmonautics
 
-Independent Minecraft 1.21.1 / NeoForge addon scaffold for [Compukters](https://github.com/CertifiedBadIdeas/Compukters)
+Independent Minecraft 1.21.1 / NeoForge addon for [Compukters](https://github.com/CertifiedBadIdeas/Compukters)
 and [Create: Cosmonautics](https://modrinth.com/mod/create-cosmonatics/version/HuCMavv8).
 
 The addon exposes request-only space telemetry through Guest Kotlin `cosmonautics.space.Space`.
@@ -21,13 +21,13 @@ Aeronautics 1.3.2 bundle, including Simulated and Offroad. Cosmonautics supplies
 `dimensional_sable`. Loom development runs explicitly load the nested Aeronautics and Sable dependencies.
 The shared `addons/dev` client/server stand also composes this addon with the other independent Compukters addons.
 Cosmonautics requires its Deep Space dimension on server ticks. Vanilla GameTest servers create only their test world,
-so the shared GameTest composition excludes Cosmonautics and this scaffold. No GameTest archive is provided yet;
+so the shared GameTest composition excludes Cosmonautics and this addon. No GameTest archive is provided yet;
 future world integration tests must use a server with the required dimensions.
 
 For a checkout outside the workspace, select `-PcompuktersDependencyMode=release` with a published SDK version through
 `-PcompuktersRelease=<version>` or an extracted SDK through `-PcompuktersSdkDirectory=<path>`.
 
-## Packaging and future API
+## Packaging
 
 `buildProductionJar` verifies the independent addon archive; `stageDistributionJar` stages it under `build/distribution`.
 Addon version `1.0` follows the first-party `x.y` policy. The archive name includes the selected Compukters line and
@@ -60,10 +60,38 @@ are represented by NaN, infinity or fabricated zero values. `status()` remains u
 The adapter reads upstream state on the server thread without advancing physics, propagating orbits or installing subscriptions.
 
 Use Sable `Physics.snapshot()` for construction attitude and solver angular velocity. Euler angles and their derivatives
-are not substituted for physical angular velocity. The first telemetry API does not expose the rotation connecting
-orbital frame axes to Sable world axes; orbital guidance must not directly feed orbital velocity into world-space steering.
-It also makes no guarantee of uninterrupted program/engine ownership across dimension transfers.
+are not substituted for physical angular velocity. The pinned Deep Space coordinate contract is described below. No guarantee is made of uninterrupted
+program/engine ownership across dimension transfers.
 
 Focused checks: `updateCompuktersAddonAbiLock`, `check`, and `developmentModJar`. Pure observation tests cover finite
 elliptic/hyperbolic data and invalid numerical boundaries. Real surface/Deep Space observations require a world
 with the Cosmonautics dimensions; a vanilla GameTest world is insufficient.
+
+
+## Orbital guidance directions
+
+`Space.guidance()` requires the same loaded-construction/Deep Space instance context as `orbit()`. One server-thread
+request copies dimension, `gameTick`, instance ID, instance-local `universeTick`, current orbital frame name and
+three unit `Vector3d` directions: `prograde` along velocity, `radialOut` away from the frame origin and `orbitNormal`
+along `radialOut cross prograde`. Prograde and radial need not be perpendicular. Invalid/zero vectors and nearly
+radial trajectories (sine of the position/velocity angle <= 1e-12) return `UNAVAILABLE` / Guest `IllegalStateException`.
+Scaling before normalization supports subnormal and near-maximum finite components without squared-norm overflow.
+A non-planet orbital frame does not require a linked Minecraft dimension for these directions.
+
+**Pinned coordinate convention:** Cosmonautics 26.08.307's `SubLevelPhysicsSystemMixin` passes cancelled **world**
+velocity components to `DeepSpaceInstance.applyVelocity`; the instance adds those components directly to its current
+orbital-frame PV velocity. Thus the directions use the same component axes as Sable world thrust for this pinned
+implementation; a new rotation between these axes would be incorrect. This is an upstream operational convention,
+not a general mapping of arbitrary Orekit frame positions into Minecraft coordinates. Surface-to-space conversion
+separately rotates the construction; this API is unavailable on the surface. Orbital frames can change during
+propagation, so callers must check frame/instance/dimension identity rather than retaining directions across changes.
+
+The same mixin transfers solver movement at the **instance boundary**. Inside the box it registers mass with zero
+velocity transfer; the engine moves the construction locally first. Guidance observes instance orbital velocity,
+not construction solver speed. Separate Sable and guidance requests remain non-atomic.
+
+Evidence: pinned JAR bytecode for `SubLevelPhysicsSystemMixin`, `DeepSpaceInstance` and `SpaceTransitionHandler`,
+with [upstream physics source](https://github.com/CosmonauticsTeam/Create-Cosmonautics/blob/main/src/main/java/dev/devce/rocketnautics/mixin/SubLevelPhysicsSystemMixin.java)
+as a readable reference. `GuidanceDirectionsTest` checks signs, handedness, extreme finite magnitudes and unavailable
+numerical states. The workspace `examples/orbital-prograde` uses standard rotations/vectors and a bounded creative
+engine controller. VM numerical scenarios and compilation do not establish actual world convergence.
