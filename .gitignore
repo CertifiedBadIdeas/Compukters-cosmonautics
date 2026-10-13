@@ -1,0 +1,13 @@
+.gradle/
+build/
+run/
+.idea/
+*.iml
+local.properties
+.gradle-sandbox/
+logs/
+.architectury-transformer/
+.kotlin/
+.toolchain/
+runs/
+run-data/
