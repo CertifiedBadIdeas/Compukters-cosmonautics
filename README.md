@@ -60,8 +60,8 @@ are represented by NaN, infinity or fabricated zero values. `status()` remains u
 The adapter reads upstream state on the server thread without advancing physics, propagating orbits or installing subscriptions.
 
 Use Sable `Physics.snapshot()` for construction attitude and solver angular velocity. Euler angles and their derivatives
-are not substituted for physical angular velocity. The pinned Deep Space coordinate contract is described below. No guarantee is made of uninterrupted
-program/engine ownership across dimension transfers.
+are not substituted for physical angular velocity. The pinned Deep Space coordinate contract is described below. The construction transfer integration restores
+program/engine ownership for the same copied devices; asynchronous restoration does not pause physics.
 
 Focused checks: `updateCompuktersAddonAbiLock`, `check`, and `developmentModJar`. Pure observation tests cover finite
 elliptic/hyperbolic data and invalid numerical boundaries. Real surface/Deep Space observations require a world
@@ -95,3 +95,23 @@ with [upstream physics source](https://github.com/CosmonauticsTeam/Create-Cosmon
 as a readable reference. `GuidanceDirectionsTest` checks signs, handedness, extreme finite magnitudes and unavailable
 numerical states. The workspace `examples/orbital-prograde` uses standard rotations/vectors and a bounded creative
 engine controller. VM numerical scenarios and compilation do not establish actual world convergence.
+
+## Construction transfer
+
+The pinned dimensional Sable warper captures computer resources before template copies and preserves bound peripheral
+network members through destination loading and source plot removal. Retained handles require the same device instance
+and exclusive process owner after restoration; a replacement or missing device stays stale. Computer checkpoint
+publication remains asynchronous and physics continues. Pending world calls may report interruption rather than replaying.
+
+`./gradlew-sandbox-dev-parallel-summary -p addons/cosmonautics runTransferTestServer` from the workspace runs the real
+warp on an isolated dedicated server, including Deep Space. A vanilla GameTest server omits that dimension.
+The fixture forces a destination chunk so an empty dimension keeps ticking while Guest compilation runs. The harness
+uses a disposable world under the addon build directory, checks a retained Guest display handle after plot translation,
+rejects a replacement, writes a PASS/FAIL result and stops the server. The Gradle task requires PASS.
+
+To include the actual Propulsion engine, first build its `developmentModJar`, then pass
+`-PcompuktersPropulsionTestMod=/absolute/path/to/compukters-propulsion-development-mod.jar` to
+`runTransferTestServer`. The optional fixture loads the pinned Create Propulsion dependency, retains the creative
+vector engine handle and its commands during a running polling loop, sets throttle to zero and releases control in
+Deep Space, verifies zero physical thrust, and rejects a replacement engine through a retained observer handle.
+This dependency is confined to the optional verification run, not the production addon.

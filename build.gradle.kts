@@ -70,6 +70,17 @@ val veilLibraries = files(configurations.named("sableRuntimeLibraries"))
 apply(from = "gradle/workspace-sdk.gradle.kts")
 compuktersAddon { register("cosmonautics") }
 
+val gameTest by sourceSets.creating
+kotlin.target.compilations.named(gameTest.name) {
+    associateWith(kotlin.target.compilations.getByName("main"))
+}
+configurations[gameTest.implementationConfigurationName].extendsFrom(configurations.testImplementation.get())
+configurations[gameTest.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())
+gameTest.compileClasspath += sourceSets.main.get().compileClasspath + sourceSets.main.get().output
+gameTest.runtimeClasspath += sourceSets.main.get().runtimeClasspath + sourceSets.main.get().output
+
+val transferPropulsionMod = providers.gradleProperty("compuktersPropulsionTestMod")
+
 val developmentMod = if (providers.gradleProperty("compuktersDependencyMode").get() == "workspace") {
     files(rootProject.file(providers.gradleProperty("compuktersWorkspace").get()).resolve(
         "modules/minecraft/v1_21_1/v1_21_1-neoforge/build/devlibs/compukters-development-mod.jar",
@@ -102,6 +113,11 @@ dependencies {
     compileOnly("ru.lazyhat.compukters:compukters-addon-api:$addonSdkVersion")
     compileOnly("ru.lazyhat.compukters:compukters-addon-neoforge-1.21.1:$addonSdkVersion")
     runtimeOnly(developmentMod)
+    add(gameTest.implementationConfigurationName, developmentMod)
+    transferPropulsionMod.orNull?.let {
+        add(gameTest.runtimeOnlyConfigurationName, files(rootProject.file(it)))
+        modRuntimeOnly("maven.modrinth:create-propulsion-simulated:H13U56dc") { isTransitive = false }
+    }
     listOf(
         "org.jetbrains.kotlin:kotlin-stdlib:2.4.10",
         "io.github.oshai:kotlin-logging-jvm:8.0.4",
@@ -114,6 +130,17 @@ loom {
     runs {
         named("client") { runDir("run/client"); ideConfigGenerated(true) }
         named("server") { runDir("run/server"); ideConfigGenerated(true) }
+        register("transferTestServer") {
+            server()
+            source(gameTest)
+            runDir("run/transferTestServer")
+            property("neoforge.enableGameTest", "true")
+            property("neoforge.enabledGameTestNamespaces", "minecraft")
+            property("compukters.cosmonautics.transferTest", "true")
+            property("compukters.cosmonautics.propulsionTest", transferPropulsionMod.isPresent.toString())
+            programArg("--nogui")
+            mods { maybeCreate("compukters_cosmonautics").apply { sourceSet("main"); sourceSet(gameTest.name) } }
+        }
     }
 }
 tasks.withType<ConfigurableKtLintTask>().configureEach { exclude { it.file.path.contains("build/generated") } }
@@ -146,6 +173,9 @@ val verifyProductionJar = tasks.register("verifyProductionJar") {
                 "ru/lazyhat/compukters/integration/cosmonautics/CompuktersCosmonauticsMod.class",
                 "META-INF/compukters/addons/cosmonautics.cagb",
                 "cosmonautics/CosmonauticsAddonContract.class",
+                "compukters_cosmonautics.mixins.json",
+                "ru/lazyhat/compukters/integration/cosmonautics/mixin/SubLevelWarperMixin.class",
+                "ru/lazyhat/compukters/integration/cosmonautics/CosmonauticsBlockTransfer.class",
             ).forEach { required ->
                 check(entries.count { it == required } == 1) { "$required is missing or duplicated in ${archive.name}" }
             }
@@ -163,11 +193,39 @@ val verifyProductionJar = tasks.register("verifyProductionJar") {
         }
     }
 }
-tasks.named("check") { dependsOn(verifyProductionJar) }
+tasks.named("check") { dependsOn(verifyProductionJar, gameTest.classesTaskName) }
+// Use a normal dedicated server: vanilla GameTestServer omits Cosmonautics' Deep Space dimension.
+val prepareTransferTestServer = tasks.register("prepareTransferTestServer") {
+    val directory = layout.projectDirectory.dir("run/transferTestServer")
+    val world = layout.buildDirectory.dir("transfer-test-world")
+    doLast {
+        world.get().asFile.deleteRecursively()
+        val folder = directory.asFile.apply { mkdirs() }
+        folder.resolve("eula.txt").writeText("eula=true\n")
+        folder.resolve("server.properties").writeText("online-mode=false\nserver-port=0\nmax-tick-time=0\nlevel-name=../../build/transfer-test-world\nlevel-type=minecraft:flat\nspawn-protection=0\n")
+        folder.resolve("transfer-test-result.txt").delete()
+    }
+}
+tasks.configureEach {
+    if (name == "runTransferTestServer") {
+        dependsOn(gameTest.classesTaskName, prepareTransferTestServer)
+        val result = layout.projectDirectory.file("run/transferTestServer/transfer-test-result.txt")
+        doLast {
+            check(result.asFile.isFile && result.asFile.readText().trim() == "PASS") {
+                "Cosmonautics transfer GameTest did not pass; inspect the dedicated server log"
+            }
+        }
+    }
+}
 tasks.named("assemble") { dependsOn(productionJar) }
 tasks.register("buildProductionJar") {
     group = "build"
     dependsOn(productionJar, verifyProductionJar)
 }
 
+// The upstream shaded Orekit archive declares a javac plugin whose implementation is absent.
+// Keep javac processor/plugin discovery separate from the mod compile classpath (no processors are used).
+tasks.withType<JavaCompile>().configureEach {
+    options.annotationProcessorPath = files(layout.buildDirectory.dir("javac-processors"))
+}
 tasks.test { useJUnitPlatform() }

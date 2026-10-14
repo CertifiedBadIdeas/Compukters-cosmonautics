@@ -36,3 +36,6 @@ type="required"
 versionRange="[26.08.307]"
 ordering="AFTER"
 side="BOTH"
+
+[[mixins]]
+config="compukters_cosmonautics.mixins.json"
