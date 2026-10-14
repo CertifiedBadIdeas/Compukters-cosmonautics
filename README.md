@@ -115,3 +115,37 @@ To include the actual Propulsion engine, first build its `developmentModJar`, th
 vector engine handle and its commands during a running polling loop, sets throttle to zero and releases control in
 Deep Space, verifies zero physical thrust, and rejects a replacement engine through a retained observer handle.
 This dependency is confined to the optional verification run, not the production addon.
+
+## Guest navigation data (addon 1.1)
+
+`Space.planetMapping()` copies the linked surface dimension, frame, planet radius and configured sphere/cube shape,
+world-border center/size, transfer permissions/height, gravitational parameter (m³/s²), finite positive central-body
+influence radius (m), and the upstream rotation model. It is available on the
+surface and in a valid planet-linked Deep Space instance. The clock is the universe clock on the surface and the
+instance-local clock in space. `Space.UNIVERSE_TICK_SECONDS` is 0.05 seconds; both are measured from the pinned
+Cosmonautics arbitrary epoch, independently of Minecraft game ticks.
+
+`rotation.epochSeconds` retains the model's original reference date. `orientation` uses Guest/JOML (x,y,z,w)
+components adapted from Hipparchus as (-q1,-q2,-q3,q0). `rate` and `acceleration` are raw upstream angular-coordinate
+values in rad/s and rad/s²; do not treat them as Sable's physical world angular velocity or assume a quaternion
+composition sign. A Guest predictor must reproduce Orekit `rotationShiftedBy` and be checked against it.
+An absent gravity source or nonfinite/nonpositive influence radius is explicitly unsupported. The influence radius
+does not rule out another body's frame inside it. The addon does not advance a candidate orbit or retain a target pad.
+
+`Space.region()` requires a loaded construction inside a valid initialized Deep Space instance. One request copies
+construction identity/logical position and bounding diagonal, region center/min/max, physics side length, frame,
+instance/universe/game ticks, current time scale and loaded/tracked-unloaded construction counts. The logical pose
+origin is not the center of mass. The region bounding box includes the upstream additional one-block extent beyond
+`sideLength`; use the latter in the upstream coupling formula. Counts describe the current observation, not a lease
+on the region. The program must monitor sharing and changes during a burn.
+
+Separate calls remain non-atomic. Check identities/ticks and discard inconsistent observations, especially across
+transfer. Border configuration can change; retained target-pad coordinates belong to Guest state. Existing
+operations 0..3 and their record shapes are preserved; these additive operations use the existing capability ABI 1,
+structured responses and SDK. Missing contexts fail explicitly instead of returning invented targets or defaults.
+
+Evidence: `NavigationObservationTest` compares nontrivial quaternion vector mapping against pinned Hipparchus/JOML
+and rejects nonfinite, nonunit and infinite-epoch models. `retainedHandleCrossesWarpedPlot` reads mapping on the surface, rejects a surface region request and verifies mapping,
+orbit and allocated region data through actual Guest calls after a warp, including checkpointed rotation-model state.
+The bounded client scenario in the workspace telemetry example remains useful for the real launch craft; these
+checks do not prove autonomous orbital targeting.

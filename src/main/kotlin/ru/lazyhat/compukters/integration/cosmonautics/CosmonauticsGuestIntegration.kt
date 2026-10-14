@@ -22,8 +22,11 @@ import cosmonautics.CosmonauticsAddonContract
 import cosmonautics.CosmonauticsCapabilityHandler
 import cosmonautics.GuidanceSnapshot
 import cosmonautics.OrbitSnapshot
+import cosmonautics.PlanetMappingSnapshot
 import cosmonautics.PlanetSnapshot
+import cosmonautics.SpaceRegionSnapshot
 import cosmonautics.SpaceStatus
+import dev.devce.rocketnautics.RocketConfig
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper
 import dev.devce.rocketnautics.content.RocketDimensions
 import dev.devce.rocketnautics.content.orbit.DeepSpaceData
@@ -120,6 +123,94 @@ private class CosmonauticsHost(
                 dimension.transitionHeight().toDouble(),
                 dimension.allowedTransfer().allowToSpace(),
                 dimension.allowedTransfer().allowToDimension(),
+            ),
+        )
+    }
+
+    override fun planetMapping(): AddonCallResult<PlanetMappingSnapshot> {
+        checkThread()
+        val data = manager() ?: return unavailable("Cosmonautics universe is not initialized")
+        val inSpace = DeepSpaceHelper.isDeepSpace(computer.level)
+        val instance = if (inSpace) instance(data) ?: return unavailable("Deep Space instance is unavailable") else null
+        val planet = planet(data) ?: return unavailable("The current frame has no planet")
+        val dimension = planet.linkedDimension() ?: return unavailable("The current planet has no linked dimension")
+        val surface = computer.level.server.getLevel(dimension.key()) ?: return unavailable("Planet dimension is unavailable")
+        val border = surface.worldBorder
+        val rotation =
+            NavigationObservation.rotation(planet.rotationDescription()) ?: return unavailable("Planet rotation model is invalid")
+        val gravity = data.universe.getGravitySourceById(planet.frame().id) ?: return unavailable("Planet gravity source is unavailable")
+        val mu = gravity.mu()
+        val influenceRadius = gravity.roi()
+        if (!mu.isFinite() || mu <= 0.0 || !influenceRadius.isFinite() || influenceRadius <= 0.0) {
+            return unavailable("Planet gravity source has unsupported parameters")
+        }
+        val radius = planet.radius()
+        val height = dimension.transitionHeight().toDouble()
+        if (!radius.isFinite() || radius <= 0.0 || !border.centerX.isFinite() || !border.centerZ.isFinite() ||
+            !border.size.isFinite() || border.size <= 0.0 || height < 0.0
+        ) {
+            return unavailable("Planet mapping geometry is invalid")
+        }
+        return addonCompleted(
+            PlanetMappingSnapshot(
+                computer.level.gameTime,
+                instance?.position?.localUniverseTicks ?: data.universeTicks,
+                planet.frame().name,
+                dimension.key().location().toString(),
+                radius,
+                mu,
+                influenceRadius,
+                RocketConfig.SERVER.planetShape.get() == RocketConfig.PlanetShape.SPHERE,
+                border.centerX,
+                border.centerZ,
+                border.size,
+                height,
+                dimension.allowedTransfer().allowToSpace(),
+                dimension.allowedTransfer().allowToDimension(),
+                rotation,
+            ),
+        )
+    }
+
+    override fun region(): AddonCallResult<SpaceRegionSnapshot> {
+        checkThread()
+        val data = manager() ?: return unavailable("Cosmonautics universe is not initialized")
+        val instance = instance(data) ?: return unavailable("Deep Space construction/instance is unavailable")
+        val construction =
+            Sable.HELPER.getContaining(computer.level, computer.position) as? ServerSubLevel
+                ?: return unavailable("Construction is unavailable")
+        val position = construction.logicalPose().position()
+        val bounds = instance.boundingBox()
+        val center = instance.center
+        val box = construction.boundingBox()
+        val diagonal = box.size().length()
+        if (!diagonal.isFinite() || diagonal < 0.0 || instance.sideLength <= 0 ||
+            !listOf(center.x(), center.y(), center.z()).all { it.isFinite() }
+        ) {
+            return unavailable("Space region geometry is invalid")
+        }
+        var loaded = 0
+        instance.collectLoadedSublevels(computer.level.server) { loaded++ }
+        return addonCompleted(
+            SpaceRegionSnapshot(
+                computer.level
+                    .dimension()
+                    .location()
+                    .toString(),
+                computer.level.gameTime,
+                instance.id,
+                instance.position.localUniverseTicks,
+                instance.position.frame.name,
+                instance.position.timescale,
+                construction.uniqueId.toString(),
+                GuestVector(position.x, position.y, position.z),
+                diagonal,
+                GuestVector(center.x(), center.y(), center.z()),
+                GuestVector(bounds.minX, bounds.minY, bounds.minZ),
+                GuestVector(bounds.maxX, bounds.maxY, bounds.maxZ),
+                instance.sideLength,
+                loaded,
+                instance.unloadedSublevels.size,
             ),
         )
     }

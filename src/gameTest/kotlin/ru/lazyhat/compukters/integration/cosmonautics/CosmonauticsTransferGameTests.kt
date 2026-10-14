@@ -19,6 +19,9 @@
 package ru.lazyhat.compukters.integration.cosmonautics
 
 import dev.devce.rocketnautics.content.RocketDimensions
+import dev.devce.rocketnautics.content.orbit.DeepSpaceData
+import dev.devce.rocketnautics.shaded.hipparchus.geometry.euclidean.threed.Vector3D
+import dev.devce.rocketnautics.shaded.orekit.utils.TimeStampedPVCoordinates
 import dev.egg.SubLevelWarper
 import dev.ryanhcode.sable.api.SubLevelAssemblyHelper
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer
@@ -182,7 +185,21 @@ object CosmonauticsTransferGameTests {
             val oldPosition = position
             val existing = destinationContainer.allSubLevels.map { it.uniqueId }.toSet()
             try {
-                SubLevelWarper.WarpSubLevel(ship, destination, Vector3d(100.0, 100.0, 100.0))
+                val data = DeepSpaceData.getInstance(source.server)
+                val planet = requireNotNull(data.universe.getPlanetByDimension(source.dimension()))
+                val gravity = requireNotNull(data.universe.getGravitySourceById(planet.frame().id))
+                val region = data.claimNewInstance(16)
+                val radius = planet.radius() * 3.0
+                region.position.init(
+                    data.universe,
+                    planet.frame().name,
+                    TimeStampedPVCoordinates(
+                        data.universeTime,
+                        Vector3D(radius, 0.0, 0.0),
+                        Vector3D(0.0, kotlin.math.sqrt(gravity.mu() / radius), 0.0),
+                    ),
+                )
+                SubLevelWarper.WarpSubLevel(ship, destination, Vector3d(region.center))
             } finally {
                 destinationContainer.allSubLevels.filter { it.uniqueId !in existing }.forEach { created += destinationContainer to it }
             }
@@ -295,9 +312,29 @@ object CosmonauticsTransferGameTests {
                 val screen = GraphicalDisplay.named("warp-screen")
                 screen.pixel(0, 0, 0x123456)
                 $setup
+                val surfaceMapping = Space.planetMapping()
+                check(surfaceMapping.dimension == Space.status().dimension)
+                check(surfaceMapping.radius > 0.0 && surfaceMapping.borderSize > 0.0)
+                check(surfaceMapping.gravitationalParameter > 0.0 && surfaceMapping.influenceRadius > surfaceMapping.radius)
+                check(Space.UNIVERSE_TICK_SECONDS == 0.05)
+                var regionUnavailable = false
+                try { Space.region() } catch (failure: IllegalStateException) { regionUnavailable = true }
+                check(regionUnavailable) { "Surface accepted a Deep Space region" }
                 println("before-warp")
                 $wait
                 check(Space.status().inDeepSpace)
+                val region = Space.region()
+                val orbit = Space.orbit()
+                val mapping = Space.planetMapping()
+                check(region.instanceId == orbit.instanceId && region.frame == orbit.frame)
+                check(mapping.frame == orbit.frame && mapping.dimension == surfaceMapping.dimension)
+                check(mapping.gravitationalParameter == orbit.gravitationalParameter)
+                check(region.sideLength > 0 && region.loadedConstructions == 1 && region.unloadedConstructions == 0)
+                check(region.constructionDiagonal > 0.0)
+                check((region.constructionPosition - region.center).length < 1.0)
+                check(region.minimum.y < region.center.y && region.center.y < region.maximum.y)
+                check(mapping.rotation.orientation.w >= -1.0 && mapping.rotation.orientation.w <= 1.0)
+                check(mapping.rotation.epochSeconds == surfaceMapping.rotation.epochSeconds)
                 $cutoff
                 screen.pixel(1, 0, 0x654321)
                 println("after-warp")

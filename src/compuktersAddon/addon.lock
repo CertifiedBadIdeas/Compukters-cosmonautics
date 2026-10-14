@@ -1,10 +1,16 @@
 lock 2
 record cosmonautics.space.GuidanceSnapshot cosmonautics.space.GuidanceSnapshot{dimension:STRING,gameTick:I64,instanceId:I64,universeTick:I64,frame:STRING,prograde:kotlin.math.Vector3d{x:F64,y:F64,z:F64},radialOut:kotlin.math.Vector3d{x:F64,y:F64,z:F64},orbitNormal:kotlin.math.Vector3d{x:F64,y:F64,z:F64}}
 record cosmonautics.space.OrbitSnapshot cosmonautics.space.OrbitSnapshot{gameTick:I64,instanceId:I64,universeTick:I64,frame:STRING,position:kotlin.math.Vector3d{x:F64,y:F64,z:F64},velocity:kotlin.math.Vector3d{x:F64,y:F64,z:F64},gravitationalParameter:F64,semiMajorAxis:F64,eccentricity:F64,inclination:F64}
+record cosmonautics.space.PlanetMappingSnapshot cosmonautics.space.PlanetMappingSnapshot{gameTick:I64,universeTick:I64,frame:STRING,dimension:STRING,radius:F64,gravitationalParameter:F64,influenceRadius:F64,spherical:BOOL,borderCenterX:F64,borderCenterZ:F64,borderSize:F64,transitionHeight:F64,allowToSpace:BOOL,allowToDimension:BOOL,rotation:cosmonautics.space.PlanetRotationModel{epochSeconds:F64,orientation:kotlin.math.Quaterniond{x:F64,y:F64,z:F64,w:F64},rate:kotlin.math.Vector3d{x:F64,y:F64,z:F64},acceleration:kotlin.math.Vector3d{x:F64,y:F64,z:F64}}}
+record cosmonautics.space.PlanetRotationModel cosmonautics.space.PlanetRotationModel{epochSeconds:F64,orientation:kotlin.math.Quaterniond{x:F64,y:F64,z:F64,w:F64},rate:kotlin.math.Vector3d{x:F64,y:F64,z:F64},acceleration:kotlin.math.Vector3d{x:F64,y:F64,z:F64}}
 record cosmonautics.space.PlanetSnapshot cosmonautics.space.PlanetSnapshot{gameTick:I64,frame:STRING,radius:F64,transitionHeight:F64,allowToSpace:BOOL,allowToDimension:BOOL}
+record cosmonautics.space.SpaceRegionSnapshot cosmonautics.space.SpaceRegionSnapshot{dimension:STRING,gameTick:I64,instanceId:I64,universeTick:I64,frame:STRING,timeScale:I32,constructionId:STRING,constructionPosition:kotlin.math.Vector3d{x:F64,y:F64,z:F64},constructionDiagonal:F64,center:kotlin.math.Vector3d{x:F64,y:F64,z:F64},minimum:kotlin.math.Vector3d{x:F64,y:F64,z:F64},maximum:kotlin.math.Vector3d{x:F64,y:F64,z:F64},sideLength:I32,loadedConstructions:I32,unloadedConstructions:I32}
 record cosmonautics.space.SpaceStatus cosmonautics.space.SpaceStatus{dimension:STRING,gameTick:I64,inDeepSpace:BOOL}
+record kotlin.math.Quaterniond kotlin.math.Quaterniond{x:F64,y:F64,z:F64,w:F64}
 record kotlin.math.Vector3d kotlin.math.Vector3d{x:F64,y:F64,z:F64}
 operation cosmonautics cosmonautics 1 0 active cosmonautics.space.SpaceBindings.orbit fun():OrbitSnapshot
 operation cosmonautics cosmonautics 1 1 active cosmonautics.space.SpaceBindings.planet fun():PlanetSnapshot
 operation cosmonautics cosmonautics 1 2 active cosmonautics.space.SpaceBindings.status fun():SpaceStatus
 operation cosmonautics cosmonautics 1 3 active cosmonautics.space.SpaceBindings.guidance fun():GuidanceSnapshot
+operation cosmonautics cosmonautics 1 4 active cosmonautics.space.SpaceBindings.planetMapping fun():PlanetMappingSnapshot
+operation cosmonautics cosmonautics 1 5 active cosmonautics.space.SpaceBindings.region fun():SpaceRegionSnapshot
