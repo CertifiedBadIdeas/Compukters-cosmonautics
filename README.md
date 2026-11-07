@@ -30,7 +30,7 @@ For a checkout outside the workspace, select `-PcompuktersDependencyMode=release
 ## Packaging
 
 `buildProductionJar` verifies the independent addon archive; `stageDistributionJar` stages it under `build/distribution`.
-Addon version `1.0` follows the first-party `x.y` policy. The archive name includes the selected Compukters line and
+Addon version `2.0` follows the first-party `x.y` policy. The archive name includes the selected Compukters line and
 metadata bounds compatibility to that line. Upstream mods and Compukters implementations remain external dependencies.
 
 ## Guest telemetry
@@ -50,10 +50,20 @@ inclination (radians). These are **instance** position/velocity and current oscu
 construction's Sable solver pose/velocity. A retained value snapshot does not change after upstream advances.
 The orbital clock can have a different timescale from the server tick. Separate telemetry requests are not atomic.
 
-`bound` identifies elliptic rather than hyperbolic motion. `periapsisRadius()` measures distance from the frame
-origin; subtract a matching planet's radius to estimate periapsis altitude. `apoapsisRadius()` rejects unbound
-motion and unrepresentable results. A bound orbit alone is not safe: compare its periapsis with the relevant
-planet/transition boundary. Planet shape and upstream atmosphere/transfer rules still matter.
+API 2.0 exposes observations only. Compute orbit properties in the consuming Guest program:
+
+```kotlin
+val orbit = Space.orbit()
+val bound = orbit.semiMajorAxis > 0.0 && orbit.eccentricity < 1.0
+val periapsisRadius = orbit.semiMajorAxis * (1.0 - orbit.eccentricity)
+check(bound) // An unbound orbit has no apoapsis.
+val apoapsisRadius = orbit.semiMajorAxis * (1.0 + orbit.eccentricity)
+check(apoapsisRadius > 0.0 && apoapsisRadius <= Double.MAX_VALUE)
+```
+
+Distances are from the frame origin; subtract a matching planet's radius to estimate altitude. The former
+`bound`, `periapsisRadius()` and `apoapsisRadius()` members are removed. A bound orbit alone is not safe: compare
+its periapsis with the relevant planet/transition boundary. Planet shape and upstream atmosphere/transfer rules still matter.
 
 Missing, corrupt or uninitialized observations throw catchable `IllegalStateException`; no unavailable fields
 are represented by NaN, infinity or fabricated zero values. `status()` remains usable while the universe initializes.
@@ -149,3 +159,13 @@ and rejects nonfinite, nonunit and infinite-epoch models. `retainedHandleCrosses
 orbit and allocated region data through actual Guest calls after a warp, including checkpointed rotation-model state.
 The bounded client scenario in the workspace telemetry example remains useful for the real launch craft; these
 checks do not prove autonomous orbital targeting.
+
+## Declarative Guest contracts
+
+Guest API declarations live in `src/compuktersAddon/contracts`. The SDK generates the actual Guest Kotlin under
+`build/generated/sources/compuktersGuest/kotlin` and packages those sources with the executable `.cagb` image.
+Run `generateCompuktersGuestSources` to inspect the result. Check in `src/compuktersAddon/addon.lock` as ABI history;
+only `updateCompuktersAddonAbiLock` changes selectors/tombstones after an intentional contract edit.
+Unit-returning `@GuestCommand` methods get ordinary calls and batch command factories from the same declaration.
+The generated host validates declared parameter constraints and derives command eligibility.
+See the [SDK authoring guide](https://github.com/CertifiedBadIdeas/Compukters/blob/dev/docs/developers/addon-development.md).

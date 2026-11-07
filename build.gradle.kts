@@ -110,6 +110,7 @@ dependencies {
     modRuntimeOnly(aeronauticsLibraries)
     forgeRuntimeLibrary(veilLibraries)
     testImplementation(kotlin("test"))
+    testImplementation("ru.lazyhat.compukters:compukters-addon-api:$addonSdkVersion")
     compileOnly("ru.lazyhat.compukters:compukters-addon-api:$addonSdkVersion")
     compileOnly("ru.lazyhat.compukters:compukters-addon-neoforge-1.21.1:$addonSdkVersion")
     runtimeOnly(developmentMod)
