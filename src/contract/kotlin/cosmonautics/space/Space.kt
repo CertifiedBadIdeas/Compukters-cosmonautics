@@ -21,12 +21,12 @@ package cosmonautics.space
 import ru.lazyhat.compukters.api.contracts.GuestRead
 import ru.lazyhat.compukters.api.contracts.GuestRecord
 import ru.lazyhat.compukters.api.contracts.GuestService
-import ru.lazyhat.compukters.api.contracts.types.Quaterniond
-import ru.lazyhat.compukters.api.contracts.types.Vector3d
+import kotlin.math.Quaterniond
+import kotlin.math.Vector3d
 
 /** Request tick and dimension. Deep Space membership alone does not imply a bound orbit. */
 @GuestRecord
-data class SpaceStatus(
+value class SpaceStatus(
     val dimension: String,
     val gameTick: Long,
     val inDeepSpace: Boolean,
@@ -34,7 +34,7 @@ data class SpaceStatus(
 
 /** Current planet; radius/transition altitude are metres. No result exists for a non-planet frame. */
 @GuestRecord
-data class PlanetSnapshot(
+value class PlanetSnapshot(
     val gameTick: Long,
     val frame: String,
     val radius: Double,
@@ -50,7 +50,7 @@ data class PlanetSnapshot(
  * universeTick is the instance's local upstream clock; gameTick is the request tick.
  */
 @GuestRecord
-data class OrbitSnapshot(
+value class OrbitSnapshot(
     val gameTick: Long,
     val instanceId: Long,
     val universeTick: Long,
@@ -71,7 +71,7 @@ data class OrbitSnapshot(
  * The reference frame can change during propagation: do not retain directions across frame changes.
  */
 @GuestRecord
-data class GuidanceSnapshot(
+value class GuidanceSnapshot(
     val dimension: String,
     val gameTick: Long,
     val instanceId: Long,
@@ -89,7 +89,7 @@ data class GuidanceSnapshot(
  * they are not Sable solver angular velocity. Guest prediction must reproduce rotationShiftedBy.
  */
 @GuestRecord
-data class PlanetRotationModel(
+value class PlanetRotationModel(
     val epochSeconds: Double,
     val orientation: Quaterniond,
     val rate: Vector3d,
@@ -106,7 +106,7 @@ data class PlanetRotationModel(
  * not a guarantee against entering another body's frame inside it.
  */
 @GuestRecord
-data class PlanetMappingSnapshot(
+value class PlanetMappingSnapshot(
     val gameTick: Long,
     val universeTick: Long,
     val frame: String,
@@ -132,7 +132,7 @@ data class PlanetMappingSnapshot(
  * timeScale is the current upstream clock setting, not a promise of future rate or a game-tick delta.
  */
 @GuestRecord
-data class SpaceRegionSnapshot(
+value class SpaceRegionSnapshot(
     val dimension: String,
     val gameTick: Long,
     val instanceId: Long,

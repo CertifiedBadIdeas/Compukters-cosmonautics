@@ -160,9 +160,11 @@ orbit and allocated region data through actual Guest calls after a warp, includi
 The bounded client scenario in the workspace telemetry example remains useful for the real launch craft; these
 checks do not prove autonomous orbital targeting.
 
-## Declarative Guest contracts
+## Native Guest Kotlin
 
-Guest API declarations live in `src/contract/kotlin`. The SDK generates the actual Guest Kotlin under
+Guest sources live in `src/contract/kotlin` and compile against the real Guest stdlib. Annotated interfaces
+declare bodyless server operations; ordinary supported Guest methods may live alongside them. Snapshot
+records use native `value class` declarations to retain inline representation. The SDK expands server plumbing under
 `build/generated/sources/compuktersGuest/kotlin` and packages those sources with the executable `.cagb` image.
 Run `generateCompuktersGuestSources` to inspect the result. Check in `src/contract/addon.lock` as ABI history;
 only `updateCompuktersAddonAbiLock` changes selectors/tombstones after an intentional contract edit.
