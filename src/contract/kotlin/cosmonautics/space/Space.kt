@@ -18,14 +18,12 @@
 
 package cosmonautics.space
 
-import ru.lazyhat.compukters.api.contracts.GuestRead
-import ru.lazyhat.compukters.api.contracts.GuestRecord
+import ru.lazyhat.compukters.api.contracts.GuestCall
 import ru.lazyhat.compukters.api.contracts.GuestService
 import kotlin.math.Quaterniond
 import kotlin.math.Vector3d
 
 /** Request tick and dimension. Deep Space membership alone does not imply a bound orbit. */
-@GuestRecord
 value class SpaceStatus(
     val dimension: String,
     val gameTick: Long,
@@ -33,7 +31,6 @@ value class SpaceStatus(
 )
 
 /** Current planet; radius/transition altitude are metres. No result exists for a non-planet frame. */
-@GuestRecord
 value class PlanetSnapshot(
     val gameTick: Long,
     val frame: String,
@@ -49,7 +46,6 @@ value class PlanetSnapshot(
  * semiMajorAxis uses metres (negative for hyperbolic orbits), inclination radians.
  * universeTick is the instance's local upstream clock; gameTick is the request tick.
  */
-@GuestRecord
 value class OrbitSnapshot(
     val gameTick: Long,
     val instanceId: Long,
@@ -70,7 +66,6 @@ value class OrbitSnapshot(
  * radialOut points away from the central body; orbitNormal is radialOut cross prograde.
  * The reference frame can change during propagation: do not retain directions across frame changes.
  */
-@GuestRecord
 value class GuidanceSnapshot(
     val dimension: String,
     val gameTick: Long,
@@ -88,7 +83,6 @@ value class GuidanceSnapshot(
  * Rate (rad/s) and acceleration (rad/s²) retain Orekit angular-coordinate conventions;
  * they are not Sable solver angular velocity. Guest prediction must reproduce rotationShiftedBy.
  */
-@GuestRecord
 value class PlanetRotationModel(
     val epochSeconds: Double,
     val orientation: Quaterniond,
@@ -105,7 +99,6 @@ value class PlanetRotationModel(
  * Mu uses m³/s²; influenceRadius is the finite positive upstream central-body ROI (m),
  * not a guarantee against entering another body's frame inside it.
  */
-@GuestRecord
 value class PlanetMappingSnapshot(
     val gameTick: Long,
     val universeTick: Long,
@@ -131,7 +124,6 @@ value class PlanetMappingSnapshot(
  * loadedConstructions includes the caller; unloadedConstructions counts upstream tracked pointers.
  * timeScale is the current upstream clock setting, not a promise of future rate or a game-tick delta.
  */
-@GuestRecord
 value class SpaceRegionSnapshot(
     val dimension: String,
     val gameTick: Long,
@@ -157,22 +149,22 @@ interface Space {
     }
 
     /** Configuration only; no trajectory prediction or target state is retained by the host. */
-    @GuestRead(binding = "planetMapping")
+    @GuestCall(binding = "planetMapping")
     fun planetMapping(): PlanetMappingSnapshot
 
     /** Throws IllegalStateException outside a loaded, valid Deep Space construction/instance. */
-    @GuestRead(binding = "region")
+    @GuestCall(binding = "region")
     fun region(): SpaceRegionSnapshot
 
-    @GuestRead(binding = "status")
+    @GuestCall(binding = "status")
     fun status(): SpaceStatus
 
     /** Throws IllegalStateException when the current frame has no linked planet dimension. */
-    @GuestRead(binding = "planet")
+    @GuestCall(binding = "planet")
     fun planet(): PlanetSnapshot
 
     /** Throws IllegalStateException outside an available, initialized Deep Space instance. */
-    @GuestRead(binding = "orbit")
+    @GuestCall(binding = "orbit")
     fun orbit(): OrbitSnapshot
 
     /**
@@ -180,6 +172,6 @@ interface Space {
      * Rejects a nearly radial trajectory: sine of the position/velocity angle must exceed 1e-12.
      * One request observes all directions; a separate Sable snapshot is not atomic with it.
      */
-    @GuestRead(binding = "guidance")
+    @GuestCall(binding = "guidance")
     fun guidance(): GuidanceSnapshot
 }
